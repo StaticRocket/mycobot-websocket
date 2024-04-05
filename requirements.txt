@@ -1,0 +1,6 @@
+gpiod==1.5.4
+numpy==1.24.4
+opencv-python==4.9.0.80
+pymycobot==3.3.9
+pyserial==3.5
+websockets==12.0
