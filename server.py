@@ -17,6 +17,13 @@ MC = pymycobot.MyCobot("/dev/ttyS3", pymycobot.PI_BAUD)
 CMD_LOCK = asyncio.Lock()
 GLOBAL_FEED = 50
 
+def get_error_and_clear():
+    """
+    Wapper for get and clear command
+    """
+    error = MC.get_error_information()
+    MC.clear_error_information()
+    return error
 
 async def on():
     """
@@ -24,7 +31,7 @@ async def on():
     """
     async with CMD_LOCK:
         MC.power_on()
-        return MC.get_error_information()
+        return get_error_and_clear()
 
 
 async def off():
@@ -33,7 +40,7 @@ async def off():
     """
     async with CMD_LOCK:
         MC.power_off()
-        return MC.get_error_information()
+        return get_error_and_clear()
 
 
 async def home():
@@ -41,31 +48,32 @@ async def home():
     Try to home the device
     """
     async with CMD_LOCK:
-        MC.send_angles([0] * 7, 50)
-        return MC.get_error_information()
+        MC.sync_send_angles([0] * 7, 50)
+        return get_error_and_clear()
 
 
-async def linear_move(cmd_args):
+async def cheap_move(cmd_args):
     """
-    Parse the extra parameters for the linear move command
+    Parse the extra parameters for the cheap move command
+
+    This is currently riding on the syntax for a linear move but there were some issues preventing
+    it from actually being a proper linear move right now.
     """
     feed_rate = GLOBAL_FEED
-    axies = ["X", "Y", "Z", "A", "B", "C", "D"]
-    updated = [0, 0, 0, 0, 0, 0, 0]
+    axies = ["X", "Y", "Z", "A", "B", "C"]
     async with CMD_LOCK:
-        coords = MC.get_coords()
+        angles = MC.get_angles()
     for arg in cmd_args:
         if arg[0] == "F":
             feed_rate = int(arg[1:])
         elif arg[0] in axies:
             index = axies.index(arg[0])
-            coords[index] = int(arg[1:])
+            angles[index] = int(arg[1:])
         else:
             print("Unparsed argument:", arg)
     async with CMD_LOCK:
-        MC.send_coord(coords, feed_rate)
-        return MC.get_error_information()
-    return 1
+        MC.sync_send_angles(angles, feed_rate)
+        return get_error_and_clear()
 
 
 async def parse_cmd(cmd):
@@ -80,7 +88,7 @@ async def parse_cmd(cmd):
     if cmd_arr[0] == ";":
         pass
     elif cmd_arr[0] == "G1":
-        ret = await linear_move(cmd_arr[1:])
+        ret = await cheap_move(cmd_arr[1:])
     elif cmd_arr[0] == "G30":
         ret = await home()
     elif cmd_arr[0] == "M80":
@@ -90,7 +98,6 @@ async def parse_cmd(cmd):
     else:
         print("Not implemented:", cmd)
         ret = 1
-
     return ret
 
 
