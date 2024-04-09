@@ -62,7 +62,9 @@ async def cheap_move(cmd_args):
     feed_rate = GLOBAL_FEED
     axies = ["X", "Y", "Z", "A", "B", "C"]
     async with CMD_LOCK:
-        angles = MC.get_angles()
+        angles = None
+        while angles is None:
+            angles = MC.get_angles()
     for arg in cmd_args:
         if arg[0] == "F":
             feed_rate = int(arg[1:])
